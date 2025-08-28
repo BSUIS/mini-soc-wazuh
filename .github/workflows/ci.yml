@@ -26,7 +26,6 @@ jobs:
       - name: Use system Python
         run: |
           python3 --version
-          python3 -m pip install --upgrade pip
           python3 -m pip install -r tests/requirements.txt
 
       - name: Deploy test stack
