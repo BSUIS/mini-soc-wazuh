@@ -22,16 +22,13 @@ jobs:
     needs: security-scan
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.14.0-rc.2'
-      
-      - name: Install test dependencies
+
+      - name: Use system Python
         run: |
-          pip install -r tests/requirements.txt
-      
+          python3 --version
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r tests/requirements.txt
+
       - name: Deploy test stack
         run: |
           export DOMAIN_NAME="test-${{ github.run_id }}.local"
