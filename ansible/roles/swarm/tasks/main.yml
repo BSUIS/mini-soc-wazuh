@@ -1,0 +1,10 @@
+---
+- name: Initialize Docker Swarm
+  community.docker.docker_swarm:
+    state: present
+    advertise_addr: "{{ ansible_default_ipv4.address }}"
+  register: swarm_result
+
+- name: Show swarm info
+  debug:
+    msg: "Swarm initialized: {{ swarm_result.changed }}"

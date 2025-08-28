@@ -1,0 +1,66 @@
+name: Mini SOC CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security-scan:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        run: |
+          trivy config --severity HIGH,CRITICAL --exit-code 1 .
+          trivy fs --severity HIGH,CRITICAL --exit-code 1 .
+
+  test:
+    runs-on: self-hosted
+    needs: security-scan
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install test dependencies
+        run: |
+          pip install -r tests/requirements.txt
+      
+      - name: Deploy test stack
+        run: |
+          export DOMAIN_NAME="test-${{ github.run_id }}.local"
+          export TRAEFIK_ACME_EMAIL="${{ secrets.TRAEFIK_ACME_EMAIL }}"
+          export WAZUH_ADMIN_PASSWORD="${{ secrets.WAZUH_ADMIN_PASSWORD }}"
+          ansible-playbook ansible/playbooks/deploy.yml
+        if: github.event_name == 'pull_request'
+      
+      - name: Run Selenium tests
+        run: |
+          cd tests
+          python -m pytest selenium/ -v
+        if: github.event_name == 'pull_request'
+      
+      - name: Cleanup test stack
+        run: |
+          ansible-playbook ansible/playbooks/teardown.yml
+        if: always() && github.event_name == 'pull_request'
+
+  deploy:
+    runs-on: self-hosted
+    needs: [security-scan, test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to production
+        run: |
+          export DOMAIN_NAME="${{ secrets.DOMAIN_NAME }}"
+          export TRAEFIK_ACME_EMAIL="${{ secrets.TRAEFIK_ACME_EMAIL }}"
+          export WAZUH_ADMIN_PASSWORD="${{ secrets.WAZUH_ADMIN_PASSWORD }}"
+          ansible-playbook ansible/playbooks/deploy.yml

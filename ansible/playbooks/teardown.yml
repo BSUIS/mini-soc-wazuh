@@ -1,0 +1,13 @@
+---
+- hosts: swarm_managers
+  become: yes
+  tasks:
+    - name: Remove Wazuh stack
+      community.docker.docker_stack:
+        name: wazuh
+        state: absent
+
+    - name: Remove secrets
+      community.docker.docker_secret:
+        name: wazuh_admin_password
+        state: absent

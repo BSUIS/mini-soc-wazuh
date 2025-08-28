@@ -1,0 +1,10 @@
+---
+- name: Deploy Wazuh stack
+  community.docker.docker_stack:
+    name: wazuh
+    compose:
+      - "{{ playbook_dir }}/../stack/wazuh-stack.yml"
+    state: present
+  environment:
+    DOMAIN_NAME: "{{ domain_name }}"
+    TRAEFIK_ACME_EMAIL: "{{ traefik_acme_email }}"

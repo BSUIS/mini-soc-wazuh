@@ -1,0 +1,86 @@
+version: '3.8'
+
+networks:
+  frontend:
+    driver: overlay
+    attachable: true
+  backend:
+    driver: overlay
+    attachable: true
+
+volumes:
+  wazuh-indexer-data:
+  wazuh-manager-data:
+  wazuh-manager-logs:
+  traefik-certificates:
+
+secrets:
+  wazuh_admin_password:
+    external: true
+
+services:
+  traefik:
+    image: traefik:v3.0
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard - remove in prod
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certificates:/certificates
+      - ./security/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./security/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    networks:
+      - frontend
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  wazuh-indexer:
+    image: wazuh/wazuh-indexer:4.7.0
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "bootstrap.memory_lock=true"
+    volumes:
+      - wazuh-indexer-data:/var/lib/wazuh-indexer
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.7.0
+    volumes:
+      - wazuh-manager-data:/var/ossec/data
+      - wazuh-manager-logs:/var/ossec/logs
+      - ./rules/local_rules.xml:/var/ossec/etc/rules/local_rules.xml:ro
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  wazuh-dashboard:
+    image: wazuh/wazuh-dashboard:4.7.0
+    environment:
+      - INDEXER_URL=https://wazuh-indexer:9200
+      - WAZUH_API_URL=https://wazuh-manager:55000
+    secrets:
+      - wazuh_admin_password
+    networks:
+      - frontend
+      - backend
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.wazuh.rule=Host(`${DOMAIN_NAME}`)"
+        - "traefik.http.routers.wazuh.tls=true"
+        - "traefik.http.routers.wazuh.tls.certresolver=letsencrypt"
+        - "traefik.http.services.wazuh.loadbalancer.server.port=5601"
+      resources:
+        limits:
+          memory: 1G

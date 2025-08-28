@@ -1,0 +1,4 @@
+---
+# Non-sensitive vars only - secrets come from GitHub Actions
+wazuh_version: "4.7.0"
+elasticsearch_heap_size: "1g"

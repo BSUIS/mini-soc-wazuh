@@ -1,0 +1,13 @@
+---
+- name: Create frontend network
+  community.docker.docker_network:
+    name: frontend
+    driver: overlay
+    attachable: true
+
+- name: Create backend network
+  community.docker.docker_network:
+    name: backend
+    driver: overlay
+    attachable: true
+
