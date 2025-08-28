@@ -6,7 +6,7 @@
     traefik_acme_email: "{{ lookup('env', 'TRAEFIK_ACME_EMAIL') }}"
   roles:
     - swarm
-    - /home/runner/mini-soc-wazuh/ansible/roles/networks
+    - networks
     - secrets
     - stack
 
